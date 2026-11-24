@@ -1,0 +1,182 @@
+Yes. Paste this into the large editor area. It makes a first **Winter Watch** page with Gemini selected, a key settings box, Save and Forget buttons, and a question box. It’s just the starting point; we’ll add the forecast and road data in later steps.
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Winter Watch</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #101827;
+      color: #f3f4f6;
+      font: 16px/1.5 system-ui, sans-serif;
+    }
+    main { max-width: 720px; margin: 0 auto; }
+    h1 { margin-bottom: 4px; }
+    .muted { color: #b8c2d1; }
+    section {
+      margin-top: 20px;
+      padding: 18px;
+      border: 1px solid #39465a;
+      border-radius: 12px;
+      background: #192438;
+    }
+    label { display: block; margin: 10px 0 5px; }
+    input, select, textarea, button {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 11px;
+      border-radius: 8px;
+      font: inherit;
+    }
+    input, select, textarea {
+      color: #f3f4f6;
+      background: #101827;
+      border: 1px solid #58677e;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    button {
+      width: auto;
+      margin: 10px 8px 0 0;
+      border: 0;
+      background: #f0c96a;
+      color: #211a08;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.secondary {
+      color: #f3f4f6;
+      background: transparent;
+      border: 1px solid #8391a6;
+    }
+    #answer {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Winter Watch</h1>
+    <p class="muted">Decision support for the County Cavan roads team. An engineer makes the final decision.</p>
+
+    <section>
+      <h2>AI settings</h2>
+      <label for="provider">Provider</label>
+      <select id="provider">
+        <option value="gemini">Google Gemini</option>
+      </select>
+
+      <label for="key">Your Gemini API key</label>
+      <input id="key" type="password" autocomplete="off"
+             placeholder="Paste your key here">
+
+      <button id="save" type="button">Save key</button>
+      <button id="forget" class="secondary" type="button">Forget key</button>
+      <p id="keyStatus" class="muted">No key saved in this browser.</p>
+    </section>
+
+    <section>
+      <h2>Ask a question</h2>
+      <label for="question">Question</label>
+      <textarea id="question" placeholder="For example: What should the Duty Engineer consider tonight?"></textarea>
+      <button id="ask" type="button">Ask Gemini</button>
+      <p id="status" class="muted"></p>
+      <h3>Answer</h3>
+      <div id="answer"></div>
+    </section>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const KEY_NAME = "winterWatchGeminiKey";
+    const MODEL = "gemini-2.5-flash";
+
+    function updateKeyStatus() {
+      $("keyStatus").textContent = localStorage.getItem(KEY_NAME)
+        ? "A key is saved in this browser."
+        : "No key saved in this browser.";
+    }
+
+    $("save").addEventListener("click", () => {
+      const key = $("key").value.trim();
+      if (!key) {
+        $("keyStatus").textContent = "Paste your key before saving.";
+        return;
+      }
+      localStorage.setItem(KEY_NAME, key);
+      $("key").value = "";
+      updateKeyStatus();
+    });
+
+    $("forget").addEventListener("click", () => {
+      localStorage.removeItem(KEY_NAME);
+      updateKeyStatus();
+      $("status").textContent = "Saved key removed from this browser.";
+    });
+
+    $("ask").addEventListener("click", async () => {
+      const key = localStorage.getItem(KEY_NAME);
+      const question = $("question").value.trim();
+
+      if (!key) {
+        $("status").textContent = "Save your Gemini key in AI settings first.";
+        return;
+      }
+      if (!question) {
+        $("status").textContent = "Type a question first.";
+        return;
+      }
+
+      $("status").textContent = "Waiting for Gemini…";
+      $("answer").textContent = "";
+
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": key
+            },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: question }] }]
+            })
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error?.message || `Request failed (${response.status})`);
+        }
+
+        const answer = data.candidates?.[0]?.content?.parts
+          ?.map(part => part.text || "")
+          .join("") || "Gemini returned no text.";
+
+        $("answer").textContent = answer;
+
+        const usage = data.usageMetadata;
+        $("status").textContent = usage
+          ? `Reply received. Tokens used: ${usage.totalTokenCount ?? "not reported"}.`
+          : "Reply received.";
+      } catch (error) {
+        $("status").textContent = "Could not get a reply: " + error.message;
+      }
+    });
+
+    updateKeyStatus();
+  </script>
+</body>
+</html>
+```
+
+The Gemini request format and `x-goog-api-key` header follow Google’s API guide. [Gemini API documentation](https://ai.google.dev/gemini-api/docs) The key is saved in this browser’s local storage and sent to Google when you press **Ask Gemini**; it is not written into this HTML. Don’t paste the key into the editor or commit it to GitHub.
+
+Next, paste the code, click **Commit changes…**, and confirm the commit. Then send me a screenshot of what GitHub shows.
